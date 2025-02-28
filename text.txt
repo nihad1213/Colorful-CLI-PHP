@@ -1,0 +1,124 @@
+PHPdə terminalda necə rəngli yazılar yazmaq olar?
+Rubydə sadə terminal proqramı yazarkən error mesajının qırmızı yazılmasını istəmişdim. Və bunun üçün rainbow adlı `gem` yükləmişdim.
+Və sonrada PHPdə sadə terminal proqramı yazarkən qərara gəldim ki bunu PHP ilə özüm edim.
+
+Bəs yaxşı bunu nece yaza bilərik?
+Bunun üçün ANSI Escape Code nədir onu bilməliyik. ANSI Escape Codes isə terminal mühitlərində mətnin formatlanması, rənglənməsi və ekran idarəsi üçün istifadə olunan xüsusi kodlardır. ANSI kodları \e və ya \033 simvolu ilə başlayır, sonra kvadrat mötərizə [ və xüsuikodlar gəlir. Nümunə
+\e[<kod1>;<kod2>;...m
+
+Nümunə: test.php faylı yaradaq və bunu yazaq.
+<?php
+echo "\e[31mBu qırmızı mətndir!\e[0m\n";
+
+İzahı:
+\e → Escape simvolu (alternativ olaraq \033 və ya \x1B yazıla bilər)
+[31m → Qırmızı rəng kodu
+\e[0m → Formatı sıfırlayır (default vəziyyətə qaytarır)
+
+ANSI escape code haqqında ətraflı məlumat üçün:
+https://en.wikipedia.org/wiki/ANSI_escape_code
+https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+
+İndi daha ətraflı kod yazaq. Hansı ki bizə daha fərqli rənglərdə və formalarda text yazmağa icazə verecək.
+Birinci CLIColors.php adlı fayl açaq. Bu faylda biz rəngləri, stilləri və  arxa fon rənglərini array şəklində saxlayacağıq.
+Bu hissəni belə yazacayıq:
+private static array $colors = [
+        'black'   => '30',
+        'red'     => '31',
+        'green'   => '32',
+        'yellow'  => '33',
+        'blue'    => '34',
+        'magenta' => '35',
+        'cyan'    => '36',
+        'white'   => '37'
+    ];
+
+    private static array $bgColors = [
+        'black'   => '40',
+        'red'     => '41',
+        'green'   => '42',
+        'yellow'  => '43',
+        'blue'    => '44',
+        'magenta' => '45',
+        'cyan'    => '46',
+        'white'   => '47'
+i    ];
+
+    private static array $styles = [
+        'bold'       => '1',
+        'dim'        => '2',
+        'underline'  => '4',
+        'blink'      => '5',
+        'reverse'    => '7',
+        'hidden'     => '8'
+    ];
+Yuxarıdakı wikipedia linkindən rənglərin ANSI escape kodunda qarşılığını tapa bilərsiz.
+İndi keçək funskiya hissəsinə. Burda funksiya olacaq hansı ki yazını istədyimiz kimi çap edecek.
+public static function color(string $text, ?string $color = null, ?string $bgColor = null, array $styles = []): string {
+        $colorCode = $color ? (self::$colors[$color] ?? '') : '';
+        $bgColorCode = $bgColor ? (self::$bgColors[$bgColor] ?? '') : '';
+        $styleCodes = array_map(fn($style) => self::$styles[$style] ?? '', $styles);
+
+        // Kodu yığmaq üçün bütün kodları bir massivə əlavə edirik
+        $codes = array_filter([$colorCode, $bgColorCode, ...$styleCodes]);
+
+        return "\e[" . implode(';', $codes) . "m" . $text . "\e[0m";
+}
+
+Belə bir funskiya olacaq. İndi onun izahına keçək.
+public static function color(string $text, ?string $color = null, ?string $bgColor = null, array $styles = []): string
+
+string $text: Formatlanacaq mətni qəbul edir. Bu parametr mütləq olmalıdır.
+
+?string $color = null: Mətnin ön rəngini təyin etmək üçün istifadə olunur. Əgər bu parametr təyin olunmayıbsa, null alacaq.
+
+?string $bgColor = null: Mətnin arxa fon rəngini təyin etmək üçün istifadə olunur. Əgər təyin olunmayıbsa, null olacaq.
+
+array $styles = []: Mətnə tətbiq ediləcək stilləri (məsələn, qalın, altdan xətt və s.) saxlayır. Bu parametrin default dəyəri boş arraydir.
+
+
+$colorCode = $color ? (self::$colors[$color] ?? '') : '';
+$color parametrinə təyin edilmiş rəngi yoxlayır. Əgər $color varsa, self::$colors[$color] ilə uyğun rəng kodunu alır. Məsələn, əgər $color = "red" olarsa, self::$colors["red"] rəng kodu olan "31"i qaytaracaq.
+
+Arxa fon rəngi üçündə eyni məntiq olacaq.
+
+$styleCodes = array_map(fn($style) => self::$styles[$style] ?? '', $styles);
+Əslində burda da eyni məntiqdir. Sadəcə array_map və fn  funskiyası fərqlidir.
+array_map fn funksiyasın hər yazılan stilə tətbiq etdirəcək.
+fn isə arrow function yaratmaq üçün istifadə olunur.
+array_map və fn funksiyası haqqında ətraflı məlumat üçün:
+https://www.php.net/manual/en/function.array-map.php
+https://www.php.net/manual/en/functions.arrow.php
+
+və sonda alınan nəticələri 1 yerə yığırıq.
+bunu array_filter funskiyası ilə edirik və fikir verdinizsə ...$styleCodes bunu belə yazdıq.
+array_filter() funksiyası, $colorCode, $bgColorCode, və $styleCodes massivlərini birləşdirir və boş olanları silir. Yəni, əgər rəng və ya stil təyin edilməyibsə, bu dəyərlər nəzərə alınmayacaq.
+
+...$styleCodes burada $styleCodes arrayindəki  bütün elementləri sadə bir arraya çevirərək əlavə edir. (splat operator kimi bilinir)
+
+splat operatorun istifadəsinə aid sadə nümunə
+<?php
+function add($a, $b, $c) {
+    return $a + $b + $c;
+}
+
+$operators = [2, 3];
+echo add(1, ...$operators);
+?
+
+proqram icra olunduqda 6 qaytaracaq.
+
+və sonda bizə alınan $codes dəyişənini bölmək lazım olacaq. ve onu return şəklində yazacayıq.
+return "\e[" . implode(';', $codes) . "m" . $text . "\e[0m";
+
+\e[ ANSI escape kodunun başlanğıcıdır.
+implode(';', $codes) ilə əldə edilmiş $codes massivinin elementlərini ; ilə ayırır və onları \e[m daxilində əlavə edir.
+$text formatlanmış mətni burada yerləşdiririk.
+\e[0m isə stilin sıfırlanması üçün istifadə olunur, yəni, digər mətnlərə təsir etməməsi üçün.
+
+echo CLIColors::color("Bu qırmızı rəngdir", "red") . PHP_EOL;
+echo CLIColors::color("Bu yaşıl və qalın mətn", "green", null, ["bold"]) . PHP_EOL;
+echo CLIColors::color("Bu mavi fon və sarı mətn", "yellow", "blue") . PHP_EOL;
+echo CLIColors::color("Bu vurğulanmış (underline) magenta mətn", "magenta", null, ["underline"]) . PHP_EOL;
+echo CLIColors::color("Bu gizli (hidden) mətn", "white", null, ["hidden"]) . PHP_EOL;
+və bunlarda nümunələr. Yekunda nəticələr belə alınacaq.

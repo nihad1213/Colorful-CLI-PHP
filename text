@@ -1,0 +1,49 @@
+<?php
+
+class CLIColors
+{
+    private static array $colors = [
+        'black'   => '0;30',
+        'red'     => '0;31',
+        'green'   => '0;32',
+        'yellow'  => '0;33',
+        'blue'    => '0;34',
+        'magenta' => '0;35',
+        'cyan'    => '0;36',
+        'white'   => '0;37',
+        'bold'    => '1',
+        'underline' => '4',
+        'reverse'   => '7'
+    ];
+
+    private static array $bgColors = [
+        'black'   => '40',
+        'red'     => '41',
+        'green'   => '42',
+        'yellow'  => '43',
+        'blue'    => '44',
+        'magenta' => '45',
+        'cyan'    => '46',
+        'white'   => '47'
+    ];
+
+    public static function color(string $text, string $color, string $bgColor = null, array $styles = []): string
+    {
+        $colorCode = self::$colors[$color] ?? '';
+        $bgColorCode = $bgColor ? (self::$bgColors[$bgColor] ?? '') : '';
+        $styleCodes = array_map(fn($style) => self::$colors[$style] ?? '', $styles);
+
+        $codes = array_filter([$colorCode, $bgColorCode, ...$styleCodes]);
+        return "\e[" . implode(';', $codes) . "m" . $text . "\e[0m";
+    }
+}
+
+
+require 'CLIColors.php';
+
+echo CLIColors::color("This is a red text", "red") . PHP_EOL;
+echo CLIColors::color("This is a green text with bold", "green", null, ["bold"]) . PHP_EOL;
+echo CLIColors::color("This is yellow with a blue background", "yellow", "blue") . PHP_EOL;
+echo CLIColors::color("This is underlined magenta text", "magenta", null, ["underline"]) . PHP_EOL;
+
+
